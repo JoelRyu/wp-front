@@ -1,177 +1,543 @@
 <script>
-	import { page } from '$app/state';
+	import { fade, fly } from 'svelte/transition';
 	import { darkMode, showToast } from '$lib/stores';
-	
+	import { wallPrayers } from '$lib/data/wall-prayers';
+
 	let prayerTitle = $state('');
 	let prayerContent = $state('');
-	let isPublic = $state(false);
-	
+	let isPublic = $state(true);
+	let selectedCategory = $state('전체');
+	let searchQuery = $state('');
 	let isDarkMode = $derived($darkMode);
-	
-	function handleSubmit() {
+
+	const categoryFilters = ['전체', '취업', '가정', '일', '학업', '영적 성장', '건강'];
+
+	const quickMetrics = [
+		{ label: '진행 중 기도', value: '128', tone: 'indigo' },
+		{ label: '동참한 기도', value: '1,246', tone: 'blue' },
+		{ label: '오늘 응답 보고', value: '42', tone: 'green' }
+	];
+
+	const features = [
+		{ title: '공유형 기도 제목', description: '좋은 목적의 기도 제목을 등록하고 함께 기도하세요.' },
+		{ title: '실시간 동참', description: '클릭 한 번으로 기도 모임에 함께할 수 있어요.' },
+		{ title: '따뜻한 응답 문화', description: '응답 소식과 감사의 마음을 기록하는 습관을 만들어요.' },
+		{ title: '홈에서 바로 시작', description: '홈 바로가기에서 기도 작성, 탐색, 동참까지 끝낼 수 있어요.' }
+	];
+
+	const prayerPreviews = wallPrayers;
+
+	let visiblePrayers = $derived.by(() => {
+		const query = searchQuery.trim().toLowerCase();
+		return prayerPreviews.filter((prayer) => {
+			const categoryMatch = selectedCategory === '전체' || prayer.category === selectedCategory;
+			const searchMatch = !query
+				|| prayer.title.toLowerCase().includes(query)
+				|| prayer.content.toLowerCase().includes(query);
+
+			return categoryMatch && searchMatch;
+		});
+	});
+
+	/**
+	 * @param {SubmitEvent} event
+	 */
+	function handleSubmit(event) {
+		event.preventDefault();
+
 		if (!prayerTitle.trim() || !prayerContent.trim()) {
-			// alert('기도 제목과 내용을 입력해주세요.');
 			showToast('기도 제목과 내용을 입력해주세요.', 'warning');
 			return;
 		}
-		console.log('Prayer submitted:', { prayerTitle, prayerContent, isPublic });
-		// TODO: API call to save prayer
+
+		console.log('Prayer submitted:', { prayerTitle, prayerContent, isPublic, selectedCategory });
+		showToast('기도 제목이 등록됐습니다. 중보기도로 이어갈게요.', 'success');
 		prayerTitle = '';
 		prayerContent = '';
-		isPublic = false;
 	}
 </script>
 
-<div class="space-y-12 {isDarkMode ? 'dark' : ''}">
-	<!-- Hero Section -->
-	<section class="text-center py-12">
-		<h1 class="{isDarkMode ? 'text-gray-100' : 'text-gray-900'} text-5xl md:text-6xl font-bold mb-6">
-			함께하는 기도의 공간
-		</h1>
-		<p class="{isDarkMode ? 'text-gray-300' : 'text-gray-600'} text-xl mb-4">
-			당신의 기도 제목을 나누고, 다른 사람들의 기도에 동참하세요.
-		</p>
-		<p class="{isDarkMode ? 'text-indigo-400' : 'text-indigo-600'} text-lg font-semibold">
-			✨ 기도의 힘으로 함께 성장합니다
-		</p>
+<div class={`home-shell ${isDarkMode ? 'home-shell--dark' : 'home-shell--light'}`}>
+	<header class="hero" in:fade={{ duration: 350 }}>
+		<p class="hero-chip">오늘의 기도 여정</p>
+		<h1>하나님의 동행을 시작할 곳, Home</h1>
+		<p class="hero-copy">기도를 쓰고, 동행의 손길을 만들고, 감사의 결실을 키우는 중심 공간입니다.</p>
+
+		<div class="hero-actions">
+			<a href="/wall" class="btn btn-primary">기도 벽으로 이동</a>
+			<a href="#quick-write" class="btn btn-ghost">기도 작성 바로가기</a>
+		</div>
+	</header>
+
+	<section class="metrics" in:fly={{ y: 16, duration: 450 }}>
+		{#each quickMetrics as metric (metric.label)}
+			<div class={`metric metric--${metric.tone}`} in:fade={{ duration: 350 }}>
+				<p>{metric.label}</p>
+				<p>{metric.value}</p>
+			</div>
+		{/each}
 	</section>
 
-	<!-- Prayer Form Section -->
-	<section class="grid md:grid-cols-3 gap-8">
-		<!-- Form Column -->
-		<div class="md:col-span-2">
-			<div class="{isDarkMode ? 'bg-gray-800 border-indigo-500' : 'bg-white border-indigo-600'} rounded-2xl shadow-lg p-8 border-t-4 transition-colors duration-300">
-				<h2 class="{isDarkMode ? 'text-gray-100' : 'text-gray-900'} text-3xl font-bold mb-2">🙏 기도 제목 작성</h2>
-				<p class="{isDarkMode ? 'text-gray-400' : 'text-gray-600'} mb-8">당신의 기도 제목을 나누어주세요. 함께 중보기도하겠습니다.</p>
-				
-				<form onsubmit={handleSubmit} class="space-y-6">
-					<!-- Prayer Title Input -->
-					<div>
-						<label for="title" class="{isDarkMode ? 'text-gray-300' : 'text-gray-700'} block text-sm font-semibold mb-2">
-							기도 제목 <span class="text-red-500">*</span>
-						</label>
-						<input
-							id="title"
-							type="text"
-							placeholder="예: 면접 잘 보기, 건강 회복, 가족 건강..."
-							bind:value={prayerTitle}
-							class="{isDarkMode ? 'bg-gray-700 border-gray-600 text-gray-100 placeholder-gray-500 focus:border-indigo-400' : 'bg-white border-gray-300 text-gray-900 focus:border-indigo-500'} w-full px-4 py-3 border-2 rounded-lg focus:outline-none transition-colors"
-							maxlength="100"
-						/>
-						<p class="{isDarkMode ? 'text-gray-500' : 'text-gray-500'} text-xs mt-1">{prayerTitle.length}/100</p>
-					</div>
+	<section class="content-grid">
+		<form id="quick-write" class="panel write-panel" onsubmit={handleSubmit} in:fly={{ y: 16, duration: 500 }}>
+			<h2>🌱 기도 제목 작성</h2>
+			<p>짧은 제목과 마음 한 줄의 기도 내용으로 오늘의 기도 여정을 시작하세요.</p>
 
-					<!-- Prayer Content Input -->
-					<div>
-						<label for="content" class="{isDarkMode ? 'text-gray-300' : 'text-gray-700'} block text-sm font-semibold mb-2">
-							기도 내용 <span class="text-red-500">*</span>
-						</label>
-						<textarea
-							id="content"
-							placeholder="상세한 기도 제목을 작성해주세요..."
-							bind:value={prayerContent}
-							rows="6"
-							class="{isDarkMode ? 'bg-gray-700 border-gray-600 text-gray-100 placeholder-gray-500 focus:border-indigo-400' : 'bg-white border-gray-300 text-gray-900 focus:border-indigo-500'} w-full px-4 py-3 border-2 rounded-lg focus:outline-none transition-colors resize-none"
-							maxlength="1000"
-						></textarea>
-						<p class="{isDarkMode ? 'text-gray-500' : 'text-gray-500'} text-xs mt-1">{prayerContent.length}/1000</p>
-					</div>
+			<label for="title" class="field-label">기도 제목</label>
+			<input
+				id="title"
+				type="text"
+				placeholder="예: 면접, 회복, 감사의 기도..."
+				maxlength="100"
+				bind:value={prayerTitle}
+			/>
+			<p class="helper-text">{prayerTitle.length}/100</p>
 
-					<!-- Public Toggle -->
-					<div class="flex items-center space-x-3">
-						<input
-							id="public"
-							type="checkbox"
-							bind:checked={isPublic}
-							class="w-5 h-5 text-indigo-600 rounded focus:ring-2 focus:ring-indigo-500 cursor-pointer"
-						/>
-						<label for="public" class="{isDarkMode ? 'text-gray-300' : 'text-gray-700'} text-sm font-medium cursor-pointer">
-							Wall에 공개하기 (다른 사람들과 함께 기도할 수 있습니다)
-						</label>
-					</div>
+			<label for="content" class="field-label">기도 내용</label>
+			<textarea
+				id="content"
+				placeholder="함께 나눌 기도의 내용을 적어주세요."
+				rows="6"
+				maxlength="1000"
+				bind:value={prayerContent}
+			></textarea>
+			<p class="helper-text">{prayerContent.length}/1000</p>
 
-					<!-- Submit Button -->
-					<button
-						type="submit"
-						class="w-full bg-gradient-to-r from-indigo-600 to-blue-600 text-white font-bold py-3 rounded-lg hover:shadow-lg transform hover:scale-105 transition-all duration-200"
-					>
-						기도 제목 올리기
-					</button>
-				</form>
-			</div>
-		</div>
-
-		<!-- Info Column -->
-		<div class="space-y-6">
-			<!-- Features Card -->
-			<div class="{isDarkMode ? 'bg-gray-800 border-blue-500' : 'bg-white border-blue-500'} rounded-2xl shadow-lg p-6 border-l-4 transition-colors duration-300">
-				<h3 class="{isDarkMode ? 'text-gray-100' : 'text-gray-900'} text-lg font-bold mb-4">📱 Features</h3>
-				<ul class="space-y-3">
-					<li class="flex items-start">
-						<span class="text-blue-500 mr-2">✓</span>
-						<span class="{isDarkMode ? 'text-gray-300' : 'text-gray-700'} text-sm">개인 기도 제목 관리</span>
-					</li>
-					<li class="flex items-start">
-						<span class="text-blue-500 mr-2">✓</span>
-						<span class="{isDarkMode ? 'text-gray-300' : 'text-gray-700'} text-sm">공개 기도 나눔</span>
-					</li>
-					<li class="flex items-start">
-						<span class="text-blue-500 mr-2">✓</span>
-						<span class="{isDarkMode ? 'text-gray-300' : 'text-gray-700'} text-sm">함께하는 중보기도</span>
-					</li>
-					<li class="flex items-start">
-						<span class="text-blue-500 mr-2">✓</span>
-						<span class="{isDarkMode ? 'text-gray-300' : 'text-gray-700'} text-sm">기도 응답 기록</span>
-					</li>
-				</ul>
+			<div class="toggle-row">
+				<input id="public" type="checkbox" bind:checked={isPublic} />
+				<label for="public">Wall에 공개하고 중보기도 동행 초대</label>
 			</div>
 
-			<!-- Quick Stats -->
-			<div class="{isDarkMode ? 'bg-gray-700 border-indigo-500' : 'bg-gradient-to-br from-indigo-50 to-blue-50 border-indigo-200'} rounded-2xl shadow-lg p-6 border transition-colors duration-300">
-				<h3 class="{isDarkMode ? 'text-gray-100' : 'text-gray-900'} text-lg font-bold mb-4">📊 Community</h3>
-				<div class="space-y-2">
-					<div class="text-sm">
-						<p class="{isDarkMode ? 'text-gray-400' : 'text-gray-600'}">활동 기도 제목</p>
-						<p class="{isDarkMode ? 'text-indigo-400' : 'text-indigo-600'} text-2xl font-bold">128</p>
+			<button type="submit" class="btn btn-primary full">기도 제목 올리기</button>
+		</form>
+
+		<aside class="panel" in:fly={{ y: 16, duration: 650, delay: 80 }}>
+			<h2>💬 시작을 돕는 가이드</h2>
+			<div class="feature-list">
+				{#each features as feature (feature.title)}
+					<div class="feature-item">
+						<h3>{feature.title}</h3>
+						<p>{feature.description}</p>
 					</div>
-					<div class="text-sm">
-						<p class="{isDarkMode ? 'text-gray-400' : 'text-gray-600'}">함께하는 기도</p>
-						<p class="{isDarkMode ? 'text-blue-400' : 'text-blue-600'} text-2xl font-bold">1,234</p>
-					</div>
+				{/each}
+			</div>
+		</aside>
+	</section>
+
+	<section class="panel feed-panel" in:fly={{ y: 16, duration: 700, delay: 120 }}>
+		<div class="feed-header">
+			<h2>🔥 최근 기도 제목</h2>
+			<div class="feed-tools">
+				<input
+					type="text"
+					placeholder="검색어 입력"
+					aria-label="기도 제목 검색"
+					bind:value={searchQuery}
+				/>
+				<div class="chips">
+					{#each categoryFilters as category (category)}
+						<button
+							type="button"
+							class={`chip ${selectedCategory === category ? 'chip--active' : ''}`}
+							onclick={() => (selectedCategory = category)}
+						>
+							{category}
+						</button>
+					{/each}
 				</div>
 			</div>
 		</div>
-	</section>
 
-	<!-- Recent Prayers Preview Section -->
-	<section class="{isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-2xl shadow-lg p-8 transition-colors duration-300">
-		<h2 class="{isDarkMode ? 'text-gray-100' : 'text-gray-900'} text-3xl font-bold mb-8">🌟 최근 기도 제목</h2>
-		<div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-			{#each [1, 2, 3] as _}
-				<div class="{isDarkMode ? 'bg-gray-700' : 'bg-gradient-to-br from-blue-50 to-indigo-50 border-indigo-500'} rounded-xl p-6 {isDarkMode ? 'border-indigo-500' : 'border-l-4'} hover:shadow-lg transition-all duration-200 cursor-pointer">
-					<div class="flex items-start justify-between mb-3">
-						<span class="{isDarkMode ? 'bg-indigo-900 text-indigo-300' : 'bg-indigo-100 text-indigo-600'} text-sm font-semibold px-3 py-1 rounded-full">
-							공개
-						</span>
-						<span class="text-2xl">🙏</span>
-					</div>
-					<h3 class="{isDarkMode ? 'text-gray-100' : 'text-gray-900'} text-lg font-bold mb-2 line-clamp-2">
-						면접에서 좋은 성과 내기
-					</h3>
-					<p class="{isDarkMode ? 'text-gray-400' : 'text-gray-600'} text-sm mb-4 line-clamp-2">
-						앞으로 있을 면접에서 제 역량을 충분히 보여주고 좋은 결과를 얻을 수 있도록...
-					</p>
-					<div class="flex items-center justify-between text-xs {isDarkMode ? 'text-gray-500' : 'text-gray-500'}">
-						<span>👥 24명이 함께 기도</span>
-						<span>2시간 전</span>
-					</div>
-				</div>
-			{/each}
-		</div>
-		<div class="mt-8 text-center">
-			<a href="/wall" class="inline-block px-8 py-3 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 transition-colors duration-200">
-				더 많은 기도 제목 보기 →
-			</a>
+		<div class="prayer-grid">
+			{#if visiblePrayers.length === 0}
+				<p class="empty">표시할 기도 제목이 없습니다.</p>
+			{:else}
+				{#each visiblePrayers as prayer (prayer.id)}
+					<a href={`/wall/${prayer.id}`} class="prayer-card">
+						<div class="prayer-meta">
+							<span>{prayer.category}</span>
+							<span>{prayer.createdAt}</span>
+						</div>
+						<h3>{prayer.title}</h3>
+						<p>{prayer.content}</p>
+						<div class="prayer-foot">
+							<span>👤 {prayer.author}</span>
+							<span>👥 {prayer.participants}명 동참</span>
+						</div>
+					</a>
+				{/each}
+			{/if}
 		</div>
 	</section>
 </div>
+
+<style>
+	.home-shell {
+		min-height: 100vh;
+		padding: 2rem 1rem;
+		background:
+			radial-gradient(1200px 700px at 0% 0%, color-mix(in oklab, var(--accent) 12%, transparent), transparent 70%),
+			radial-gradient(1100px 600px at 100% 15%, color-mix(in oklab, var(--accent-2) 10%, transparent), transparent 72%),
+			var(--bg);
+		color: var(--text);
+	}
+
+	.home-shell--light {
+		--bg: #f6f4ef;
+		--surface: #ffffff;
+		--surface-soft: #f2ede5;
+		--text: #1f2937;
+		--muted: #6b7280;
+		--accent: #0f766e;
+		--accent-2: #d97706;
+		--line: #e5e7eb;
+		--shadow: 0 16px 40px -22px rgba(17, 24, 39, 0.35);
+	}
+
+	.home-shell--dark {
+		--bg: #0f172a;
+		--surface: rgba(30, 41, 59, 0.7);
+		--surface-soft: rgba(51, 65, 85, 0.7);
+		--text: #f8fafc;
+		--muted: #94a3b8;
+		--accent: #2dd4bf;
+		--accent-2: #f59e0b;
+		--line: rgba(148, 163, 184, 0.25);
+		--shadow: 0 16px 40px -24px rgba(0, 0, 0, 0.6);
+	}
+
+	.hero {
+		max-width: 72rem;
+		margin: 0 auto;
+		padding: 2.5rem 2rem;
+		border-radius: 1.5rem;
+		backdrop-filter: blur(8px);
+		background: color-mix(in oklab, var(--surface) 78%, transparent);
+		border: 1px solid var(--line);
+		box-shadow: var(--shadow);
+		display: grid;
+		gap: 1rem;
+	}
+
+	.hero-chip {
+		width: fit-content;
+		font-weight: 600;
+		font-size: 0.84rem;
+		padding: 0.3rem 0.8rem;
+		border-radius: 999px;
+		background: color-mix(in oklab, var(--accent) 16%, transparent);
+		color: var(--accent);
+	}
+
+	.hero h1 {
+		font-size: clamp(1.8rem, 4vw, 2.7rem);
+		font-weight: 800;
+		line-height: 1.2;
+		margin: 0;
+	}
+
+	.hero-copy {
+		max-width: 56ch;
+		color: var(--muted);
+		margin: 0;
+		font-size: 1rem;
+		line-height: 1.6;
+	}
+
+	.hero-actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.75rem;
+	}
+
+	.btn {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		border-radius: 0.8rem;
+		font-weight: 700;
+		padding: 0.75rem 1.25rem;
+		border: 1px solid transparent;
+		transition: transform 0.25s, box-shadow 0.25s, background 0.25s, border-color 0.25s;
+	}
+
+	.btn:hover {
+		transform: translateY(-2px);
+	}
+
+	.btn.full {
+		width: 100%;
+	}
+
+	.btn-primary {
+		color: white;
+		background: linear-gradient(120deg, var(--accent), var(--accent-2));
+		box-shadow: 0 12px 26px -18px rgba(15, 23, 42, 0.45);
+	}
+
+	.btn-primary:hover {
+		box-shadow: 0 12px 24px -18px rgba(15, 23, 42, 0.6);
+	}
+
+	.btn-ghost {
+		color: var(--text);
+		background: color-mix(in oklab, var(--surface) 92%, transparent);
+		border-color: var(--line);
+	}
+
+	.metrics {
+		margin: 1rem auto 0;
+		max-width: 72rem;
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+		gap: 0.8rem;
+	}
+
+	.metric {
+		padding: 1rem;
+		border-radius: 1rem;
+		background: var(--surface);
+		border: 1px solid var(--line);
+		box-shadow: var(--shadow);
+	}
+
+	.metric p {
+		margin: 0;
+	}
+
+	.metric p:first-child {
+		color: var(--muted);
+		font-size: 0.85rem;
+	}
+
+	.metric p:last-child {
+		font-size: 1.5rem;
+		font-weight: 800;
+		margin-top: 0.35rem;
+	}
+
+	.metric--indigo,
+	.metric--blue,
+	.metric--green {
+		border-color: color-mix(in oklab, var(--accent) 20%, transparent);
+	}
+
+	.content-grid {
+		max-width: 72rem;
+		margin: 1rem auto 0;
+		display: grid;
+		grid-template-columns: 2fr 1fr;
+		gap: 1rem;
+	}
+
+	.panel {
+		background: color-mix(in oklab, var(--surface) 85%, transparent);
+		border: 1px solid var(--line);
+		border-radius: 1.25rem;
+		padding: 1.25rem;
+		box-shadow: var(--shadow);
+	}
+
+	.panel h2 {
+		margin: 0;
+		font-size: 1.1rem;
+		font-weight: 800;
+	}
+
+	.panel p {
+		color: var(--muted);
+		margin-top: 0.5rem;
+		margin-bottom: 1rem;
+	}
+
+	.field-label {
+		display: block;
+		font-weight: 600;
+		margin-top: 0.9rem;
+		margin-bottom: 0.45rem;
+		font-size: 0.9rem;
+	}
+
+	.write-panel input,
+	.write-panel textarea {
+		width: 100%;
+		border: 1px solid var(--line);
+		background: var(--bg);
+		color: var(--text);
+		border-radius: 0.75rem;
+		padding: 0.75rem 0.85rem;
+		outline: none;
+		transition: border-color 0.2s, box-shadow 0.2s;
+	}
+
+	.write-panel input:focus,
+	.write-panel textarea:focus {
+		border-color: color-mix(in oklab, var(--accent) 55%, white);
+		box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent) 22%, transparent);
+	}
+
+	.helper-text {
+		text-align: right;
+		margin: 0.35rem 0 0;
+		color: var(--muted);
+		font-size: 0.75rem;
+	}
+
+	.toggle-row {
+		margin: 1rem 0 1.2rem;
+		display: flex;
+		align-items: center;
+		gap: 0.45rem;
+	}
+
+	.toggle-row input {
+		width: 1rem;
+		height: 1rem;
+	}
+
+	.toggle-row label {
+		color: var(--muted);
+		font-size: 0.92rem;
+	}
+
+	.feature-list {
+		display: grid;
+		gap: 0.7rem;
+	}
+
+	.feature-item {
+		border: 1px solid var(--line);
+		border-radius: 0.85rem;
+		padding: 0.8rem;
+		background: color-mix(in oklab, var(--surface-soft) 80%, transparent);
+	}
+
+	.feature-item h3 {
+		font-size: 0.92rem;
+		margin: 0 0 0.2rem;
+	}
+
+	.feature-item p {
+		margin: 0;
+		font-size: 0.88rem;
+	}
+
+	.feed-panel {
+		max-width: 72rem;
+		margin: 1rem auto 0;
+	}
+
+	.feed-header {
+		display: flex;
+		flex-direction: column;
+		gap: 0.8rem;
+		margin-bottom: 1rem;
+	}
+
+	.feed-tools {
+		display: grid;
+		gap: 0.8rem;
+	}
+
+	.feed-tools input {
+		width: 100%;
+		border: 1px solid var(--line);
+		background: var(--bg);
+		color: var(--text);
+		border-radius: 0.8rem;
+		padding: 0.65rem 0.85rem;
+	}
+
+	.chips {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.5rem;
+	}
+
+	.chip {
+		border: 1px solid var(--line);
+		border-radius: 999px;
+		padding: 0.4rem 0.7rem;
+		background: color-mix(in oklab, var(--surface) 84%, transparent);
+	}
+
+	.chip--active {
+		background: color-mix(in oklab, var(--accent) 20%, transparent);
+		border-color: color-mix(in oklab, var(--accent) 45%, transparent);
+		font-weight: 700;
+	}
+
+	.prayer-grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+		gap: 0.8rem;
+	}
+
+	.prayer-card {
+		border-radius: 1rem;
+		border: 1px solid var(--line);
+		padding: 1rem;
+		background: color-mix(in oklab, var(--surface-soft) 72%, transparent);
+		text-decoration: none;
+		color: inherit;
+		display: grid;
+		gap: 0.5rem;
+		transition: transform 0.2s, border-color 0.2s;
+	}
+
+	.prayer-card:hover {
+		transform: translateY(-3px);
+		border-color: color-mix(in oklab, var(--accent) 30%, var(--line));
+	}
+
+	.prayer-meta {
+		display: flex;
+		justify-content: space-between;
+		font-size: 0.75rem;
+		color: var(--muted);
+	}
+
+	.prayer-card h3 {
+		font-size: 0.97rem;
+		line-height: 1.35;
+		margin: 0;
+	}
+
+	.prayer-card p {
+		margin: 0;
+		font-size: 0.88rem;
+		color: color-mix(in oklab, var(--text) 82%, var(--muted));
+	}
+
+	.prayer-foot {
+		display: flex;
+		justify-content: space-between;
+		font-size: 0.79rem;
+		color: var(--muted);
+	}
+
+	.empty {
+		margin: 0;
+		color: var(--muted);
+		padding: 1rem;
+		border: 1px dashed var(--line);
+		border-radius: 0.8rem;
+		text-align: center;
+	}
+
+	@media (max-width: 980px) {
+		.content-grid {
+			grid-template-columns: 1fr;
+		}
+	}
+
+	@media (max-width: 640px) {
+		.home-shell {
+			padding: 1rem 0.75rem;
+		}
+
+		.hero {
+			padding: 1.5rem;
+		}
+	}
+</style>

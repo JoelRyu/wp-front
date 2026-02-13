@@ -2,13 +2,16 @@
 	import { toastStore, removeToast } from './stores';
 	import { darkMode } from './stores';
 	
+	/** @typedef {'success' | 'error' | 'warning' | 'info'} ToastType */
 	let isDarkMode = $derived($darkMode);
 	
+	/** @param {ToastType} type */
 	function getToastStyles(type) {
 		const base = isDarkMode 
 			? 'bg-gray-800 border-l-4' 
 			: 'bg-white border-l-4';
 		
+		/** @type {{ [key in ToastType]: string }} */
 		const styles = {
 			success: `${base} border-green-500 ${isDarkMode ? 'text-green-300' : 'text-green-700'}`,
 			error: `${base} border-red-500 ${isDarkMode ? 'text-red-300' : 'text-red-700'}`,
@@ -19,7 +22,9 @@
 		return styles[type] || styles.info;
 	}
 	
+	/** @param {ToastType} type */
 	function getIconEmoji(type) {
+		/** @type {{ [key in ToastType]: string }} */
 		const icons = {
 			success: '✅',
 			error: '❌',

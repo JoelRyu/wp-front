@@ -14,6 +14,9 @@ export const load = async (event) => {
 };
 
 export const actions = {
+	/**
+	 * @param {import('@sveltejs/kit').RequestEvent} event
+	 */
 	login: async (event) => {
 		const formData = await event.request.formData();
 		const username = formData.get('username');
@@ -28,7 +31,10 @@ export const actions = {
 			return fail(400, { message: 'Invalid password (min 6, max 255 characters)' });
 		}
 
-		const results = await db.select().from(table.user).where(eq(table.user.username, username));
+		const results = await db
+			.select()
+			.from(table.user)
+			.where(eq(table.user.username, username));
 
 		const existingUser = results.at(0);
 		if (!existingUser) {
@@ -51,6 +57,10 @@ export const actions = {
 
 		return redirect(302, '/demo/lucia');
 	},
+
+	/**
+	 * @param {import('@sveltejs/kit').RequestEvent} event
+	 */
 	register: async (event) => {
 		const formData = await event.request.formData();
 		const username = formData.get('username');
@@ -92,6 +102,10 @@ function generateUserId() {
 	return id;
 }
 
+/**
+ * @param {unknown} username
+ * @returns {username is string}
+ */
 function validateUsername(username) {
 	return (
 		typeof username === 'string' &&
@@ -101,6 +115,10 @@ function validateUsername(username) {
 	);
 }
 
+/**
+ * @param {unknown} password
+ * @returns {password is string}
+ */
 function validatePassword(password) {
 	return typeof password === 'string' && password.length >= 6 && password.length <= 255;
 }

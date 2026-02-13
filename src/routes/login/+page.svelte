@@ -1,6 +1,5 @@
 <script>
-	import { darkMode } from '$lib/stores';
-	import { showToast } from '$lib/stores';
+	import { darkMode, showToast } from '$lib/stores';
 	
 	let email = $state('');
 	let password = $state('');
@@ -9,6 +8,7 @@
 	let rememberMe = $state(false);
 	let isDarkMode = $derived($darkMode);
 
+	/** @param {SubmitEvent} e */
 	async function handleLogin(e) {
 		e.preventDefault();
 		
@@ -39,11 +39,6 @@
 		}
 	}
 
-	function handleKeydown(e) {
-		if (e.key === 'Enter') {
-			handleLogin();
-		}
-	}
 </script>
 
 <div class="{isDarkMode ? 'bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900' : 'bg-gradient-to-br from-blue-50 via-indigo-50 to-white'} flex items-center justify-center px-4 py-8 transition-colors duration-300">
@@ -85,7 +80,6 @@
 						type="email"
 						placeholder="your.email@example.com"
 						bind:value={email}
-						onkeydown={handleKeydown}
 						disabled={isLoading}
 						class="{isDarkMode ? 'bg-gray-700 border-gray-600 text-gray-100 placeholder-gray-500 focus:border-indigo-400 disabled:bg-gray-600' : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400 focus:border-indigo-500 disabled:bg-gray-50'} w-full px-3 py-2 border-2 rounded-lg focus:outline-none transition-colors disabled:cursor-not-allowed text-sm"
 					/>
@@ -101,7 +95,6 @@
 						type="password"
 						placeholder="••••••••"
 						bind:value={password}
-						onkeydown={handleKeydown}
 						disabled={isLoading}
 						class="{isDarkMode ? 'bg-gray-700 border-gray-600 text-gray-100 placeholder-gray-500 focus:border-indigo-400 disabled:bg-gray-600' : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400 focus:border-indigo-500 disabled:bg-gray-50'} w-full px-3 py-2 border-2 rounded-lg focus:outline-none transition-colors disabled:cursor-not-allowed text-sm"
 					/>
@@ -118,9 +111,9 @@
 						/>
 						<span class="{isDarkMode ? 'text-gray-400' : 'text-gray-600'} text-xs font-medium">로그인 유지</span>
 					</label>
-					<a href="#" class="{isDarkMode ? 'text-indigo-400 hover:text-indigo-300' : 'text-indigo-600 hover:text-indigo-700'} text-xs font-semibold transition-colors">
+					<button type="button" class="{isDarkMode ? 'text-indigo-400 hover:text-indigo-300' : 'text-indigo-600 hover:text-indigo-700'} text-xs font-semibold transition-colors">
 						비밀번호 찾기
-					</a>
+					</button>
 				</div>
 
 				<!-- Submit Button -->

@@ -1,246 +1,536 @@
 <script>
-	let selectedFilter = $state('recent');
-	let searchQuery = $state('');
-	import { darkMode } from '$lib/stores';
-	let isDarkMode = $derived($darkMode);
+	import { darkMode, showToast } from '$lib/stores';
+	import { fade, fly } from 'svelte/transition';
+	import { wallPrayers } from '$lib/data/wall-prayers';
 
-	// Mock data - TODO: Replace with API call
-	const prayers = [
-		{
-			id: 1,
-			title: '면접에서 좋은 성과 내기',
-			content: '앞으로 있을 면접에서 제 역량을 충분히 보여주고 좋은 결과를 얻을 수 있도록 기도해주세요.',
-			author: '익명',
-			createdAt: '2시간 전',
-			participants: 24,
-			category: '취업',
-			isPublic: true
-		},
-		{
-			id: 2,
-			title: '가족의 건강과 평안',
-			content: '부모님과 형제의 건강과 안전을 위해 기도 부탁드립니다. 모두가 행복하고 평안한 시간을 갖길 원합니다.',
-			author: '익명',
-			createdAt: '4시간 전',
-			participants: 38,
-			category: '가정',
-			isPublic: true
-		},
-		{
-			id: 3,
-			title: '프로젝트 성공적으로 완료하기',
-			content: '현재 진행 중인 프로젝트가 일정에 맞춰 성공적으로 완료될 수 있도록 도움과 지혜를 구합니다.',
-			author: '익명',
-			createdAt: '6시간 전',
-			participants: 16,
-			category: '일',
-			isPublic: true
-		},
-		{
-			id: 4,
-			title: '학업 성취',
-			content: '시험 준비를 하고 있습니다. 집중력을 잃지 않고 좋은 성적을 거둘 수 있도록 기도해주세요.',
-			author: '익명',
-			createdAt: '8시간 전',
-			participants: 42,
-			category: '학업',
-			isPublic: true
-		},
-		{
-			id: 5,
-			title: '신앙의 깊이',
-			content: '하나님과의 관계가 더욱 깊어질 수 있도록, 영적으로 성장하고 중보기도 할 수 있는 마음을 주시길 원합니다.',
-			author: '익명',
-			createdAt: '10시간 전',
-			participants: 31,
-			category: '영적 성장',
-			isPublic: true
-		},
-		{
-			id: 6,
-			title: '치유와 회복',
-			content: '건강의 어려움을 겪고 있는 친지를 위해 기도 부탁드립니다. 완전한 치유와 회복을 바랍니다.',
-			author: '익명',
-			createdAt: '12시간 전',
-			participants: 27,
-			category: '건강',
-			isPublic: true
-		}
-	];
+	let selectedFilter = $state('recent');
+	let selectedCategory = $state('전체');
+	let searchQuery = $state('');
+	let isDarkMode = $derived($darkMode);
 
 	const categories = ['전체', '취업', '가정', '일', '학업', '영적 성장', '건강'];
 
+	const sortOptions = [
+		{ key: 'recent', label: '최신순' },
+		{ key: 'popular', label: '참여순' }
+	];
+
+	const filterStats = [
+		{ label: '전체 공개 기도', value: '6건', tone: 'indigo' },
+		{ label: '참여 인원', value: '198명', tone: 'blue' },
+		{ label: '오늘 신규', value: '12건', tone: 'green' }
+	];
+
+	const prayers = wallPrayers;
+
+	/** @type {Record<string, number>} */
+	const timeAgoToMinutes = {
+		'2시간 전': 120,
+		'4시간 전': 240,
+		'6시간 전': 360,
+		'8시간 전': 480,
+		'10시간 전': 600,
+		'12시간 전': 720
+	};
+
 	let filteredPrayers = $derived.by(() => {
+		const query = searchQuery.trim().toLowerCase();
 		return prayers
-			.filter(prayer => {
-				const matchesSearch = prayer.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-					prayer.content.toLowerCase().includes(searchQuery.toLowerCase());
-				return matchesSearch;
+			.filter((prayer) => {
+				const matchesCategory =
+					selectedCategory === '전체' || prayer.category === selectedCategory;
+
+				const matchesSearch =
+					!query ||
+					prayer.title.toLowerCase().includes(query) ||
+					prayer.content.toLowerCase().includes(query);
+
+				return matchesCategory && matchesSearch;
 			})
 			.sort((a, b) => {
 				if (selectedFilter === 'recent') {
-					return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-				} else if (selectedFilter === 'popular') {
-					return b.participants - a.participants;
+					return (
+						(timeAgoToMinutes[a.createdAt] ?? Number.MAX_SAFE_INTEGER) -
+						(timeAgoToMinutes[b.createdAt] ?? Number.MAX_SAFE_INTEGER)
+					);
 				}
-				return 0;
+				return b.participants - a.participants;
 			});
 	});
 
+	/**
+	 * @param {number} id
+	 */
 	function handleJoinPrayer(id) {
 		console.log('Join prayer:', id);
-		// TODO: API call to join prayer
-		// alert('함께 기도하겠습니다! 🙏');
 		showToast('함께 기도하겠습니다! 🙏', 'success');
 	}
 </script>
 
-<div class="space-y-8">
-	<!-- Header Section -->
-	<section class="text-center py-8">
-		<h1 class="{isDarkMode ? 'text-gray-100' : 'text-gray-900'} text-4xl md:text-5xl font-bold mb-3">
-			🌍 기도의 벽
-		</h1>
-		<p class="{isDarkMode ? 'text-gray-300' : 'text-gray-600'} text-lg">
-			함께 나누는 기도 제목들입니다. 클릭하여 함께 기도해주세요.
-		</p>
-	</section>
+<div class={`wall-shell ${isDarkMode ? 'wall-shell--dark' : 'wall-shell--light'}`}>
+	<header class="hero" in:fly={{ y: 20, duration: 350 }}>
+		<p class="hero-chip">기도를 함께 짓는곳</p>
+		<h1>기도의 벽</h1>
+		<p class="hero-copy">공개된 기도 제목을 검색하고, 마음이 맞는 주제와 함께 기도의 동행자가 되어주세요.</p>
+	</header>
 
-	<!-- Search and Filter Section -->
-	<section class="{isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-2xl shadow-lg p-6 sticky top-20 z-40 transition-colors duration-300">
-		<div class="space-y-4">
-			<!-- Search Bar -->
-			<div class="relative">
-				<input
-					type="text"
-					placeholder="기도 제목 검색..."
-					bind:value={searchQuery}
-					class="{isDarkMode ? 'bg-gray-700 border-gray-600 text-gray-100 placeholder-gray-500 focus:border-indigo-400' : 'bg-white border-gray-300 text-gray-900 focus:border-indigo-500'} w-full px-4 py-3 pl-12 border-2 rounded-lg focus:outline-none transition-colors"
-				/>
-				<svg class="absolute left-4 top-3.5 w-5 h-5 {isDarkMode ? 'text-gray-500' : 'text-gray-400'}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+	<section class="toolbar" in:fade={{ duration: 300 }}>
+		<div class="toolbar-card">
+			<label for="search" class="field-label">기도 제목 검색</label>
+			<div class="search-wrap">
+				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+					<path
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						stroke-width="2"
+						d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+					/>
 				</svg>
+				<input
+					id="search"
+					type="text"
+					placeholder="기도 제목이나 내용을 검색해보세요"
+					aria-label="기도 제목 검색"
+					bind:value={searchQuery}
+				/>
 			</div>
+		</div>
 
-			<!-- Filter and Sort -->
-			<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-				<!-- Sort Options -->
-				<div>
-					<label class="block text-xs font-semibold {isDarkMode ? 'text-gray-300' : 'text-gray-700'} mb-2" for="sort-select">정렬</label>
-					<div class="flex space-x-3">
-						<button
-							onclick={() => (selectedFilter = 'recent')}
-							class="px-4 py-2 rounded-lg font-medium transition-all duration-200 {selectedFilter === 'recent'
-								? 'bg-indigo-600 text-white shadow-lg'
-								: isDarkMode ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}"
-						>
-							최신순
-						</button>
-						<button
-							onclick={() => (selectedFilter = 'popular')}
-							class="px-4 py-2 rounded-lg font-medium transition-all duration-200 {selectedFilter === 'popular'
-								? 'bg-indigo-600 text-white shadow-lg'
-								: isDarkMode ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}"
-						>
-							인기순
-						</button>
-					</div>
-				</div>
+		<div class="toolbar-card">
+			<p class="field-label">정렬</p>
+			<div class="chip-row">
+				{#each sortOptions as option (option.key)}
+					<button
+						type="button"
+						class={`chip ${selectedFilter === option.key ? 'chip--active' : ''}`}
+						onclick={() => (selectedFilter = option.key)}
+					>
+						{option.label}
+					</button>
+				{/each}
+			</div>
+		</div>
 
-				<!-- Category Filter (info text) -->
-				<div>
-					<label class="block text-xs font-semibold {isDarkMode ? 'text-gray-300' : 'text-gray-700'} mb-2" for="category-select">카테고리</label>
-					<div class="flex flex-wrap gap-2">
-						{#each categories.slice(0, 4) as category}
-							<span class="{isDarkMode ? 'bg-indigo-900 text-indigo-300' : 'bg-blue-100 text-blue-700'} px-3 py-1 rounded-full text-xs font-medium">
-								{category}
-							</span>
-						{/each}
-					</div>
-				</div>
+		<div class="toolbar-card">
+			<p class="field-label">카테고리</p>
+			<div class="chip-row">
+				{#each categories as category (category)}
+					<button
+						type="button"
+						class={`chip ${selectedCategory === category ? 'chip--active' : ''}`}
+						onclick={() => (selectedCategory = category)}
+					>
+						{category}
+					</button>
+				{/each}
 			</div>
 		</div>
 	</section>
 
-	<!-- Results Info -->
-	<div class="{isDarkMode ? 'text-gray-400' : 'text-gray-600'} text-sm">
-		총 <span class="{isDarkMode ? 'text-indigo-400' : 'text-indigo-600'} font-bold">{filteredPrayers.length}</span>개의 기도 제목이 있습니다.
-	</div>
+	<section class="stats" in:fly={{ y: 20, duration: 450 }}>
+		{#each filterStats as item (item.label)}
+			<div class={`stat stat--${item.tone}`}>
+				<p>{item.label}</p>
+				<p>{item.value}</p>
+			</div>
+		{/each}
+	</section>
 
-	<!-- Prayers Grid -->
-	<section class="grid gap-6">
-		{#each filteredPrayers as prayer (prayer.id)}
-			<div class="{isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-2xl shadow-lg hover:shadow-xl transition-all duration-200 overflow-hidden group cursor-pointer transform hover:scale-102">
-				<div class="{isDarkMode ? 'bg-gray-700 border-indigo-500' : 'bg-gradient-to-br from-white to-blue-50 border-indigo-500'} p-6 border-l-4">
-					<!-- Header -->
-					<div class="flex items-start justify-between mb-4">
-						<div class="flex-1">
-							<div class="flex items-center space-x-2 mb-2">
-								<span class="{isDarkMode ? 'bg-indigo-900 text-indigo-300' : 'bg-indigo-100 text-indigo-700'} text-xs font-bold px-3 py-1 rounded-full">
-									{prayer.category}
-								</span>
-								<span class="{isDarkMode ? 'text-gray-500' : 'text-gray-500'} text-xs">{prayer.createdAt}</span>
+	<section class="panel results" in:fly={{ y: 20, duration: 500, delay: 60 }}>
+		<div class="results-header">
+			<h2>공개 기도 목록</h2>
+			<p>총 <strong>{filteredPrayers.length}</strong>건</p>
+		</div>
+
+		<div class="prayer-grid">
+			{#if filteredPrayers.length === 0}
+				<div class="empty-panel">
+					<div class="empty-icon">🔍</div>
+					<p>표시할 기도 제목이 없습니다.</p>
+					<p>검색어 또는 카테고리를 바꿔서 다시 찾아보세요.</p>
+				</div>
+			{:else}
+				{#each filteredPrayers as prayer (prayer.id)}
+					<article class="prayer-card">
+						<a href={`/wall/${prayer.id}`} class="prayer-card-link">
+							<div class="prayer-top">
+								<span>{prayer.category}</span>
+								<span>{prayer.createdAt}</span>
 							</div>
-							<h3 class="{isDarkMode ? 'text-gray-100 group-hover:text-indigo-400' : 'text-gray-900 group-hover:text-indigo-600'} text-2xl font-bold mb-2 group-hover:text-indigo-600 transition-colors">
-								{prayer.title}
-							</h3>
-						</div>
-					</div>
-
-					<!-- Content -->
-					<p class="{isDarkMode ? 'text-gray-400' : 'text-gray-700'} mb-4 line-clamp-2">
-						{prayer.content}
-					</p>
-
-					<!-- Footer -->
-					<div class="flex items-center justify-between pt-4 {isDarkMode ? 'border-gray-600' : 'border-gray-200'} border-t">
-						<div class="flex items-center space-x-4 text-sm {isDarkMode ? 'text-gray-400' : 'text-gray-600'}">
-							<span class="flex items-center">
-								<span class="text-lg mr-1">👥</span>
-								{prayer.participants}명 함께 기도 중
-							</span>
-							<span class="flex items-center">
-								<span class="text-lg mr-1">✍️</span>
-								{prayer.author}
-							</span>
-						</div>
+							<h3>{prayer.title}</h3>
+							<p>{prayer.content}</p>
+							<div class="prayer-foot">
+								<span>👤 {prayer.author}</span>
+								<span>👥 {prayer.participants}명</span>
+							</div>
+						</a>
 						<button
+							type="button"
+							class="join-btn"
 							onclick={() => handleJoinPrayer(prayer.id)}
-							class="px-6 py-2 bg-gradient-to-r from-indigo-600 to-blue-600 text-white font-bold rounded-lg hover:shadow-lg transform hover:scale-105 transition-all duration-200"
 						>
 							함께 기도하기
 						</button>
-					</div>
-				</div>
-			</div>
-		{/each}
-
-		{#if filteredPrayers.length === 0}
-			<div class="text-center py-16">
-				<div class="text-6xl mb-4">🔍</div>
-				<p class="{isDarkMode ? 'text-gray-300' : 'text-gray-600'} text-xl mb-2">검색 결과가 없습니다.</p>
-				<p class="{isDarkMode ? 'text-gray-500' : 'text-gray-500'}">다른 검색어를 시도해주세요.</p>
-			</div>
-		{/if}
+					</article>
+				{/each}
+			{/if}
+		</div>
 	</section>
 
-	<!-- Call to Action -->
-	<section class="bg-gradient-to-r from-indigo-600 to-blue-600 rounded-2xl shadow-lg p-12 text-center text-white">
-		<h2 class="text-3xl font-bold mb-4">당신의 기도 제목을 나누세요</h2>
-		<p class="text-lg mb-8 opacity-90">
-			함께하는 기도의 힘을 경험하세요. 당신의 기도 제목이 다른 사람들을 축복할 수 있습니다.
-		</p>
-		<a
-			href="/"
-			class="inline-block px-8 py-3 bg-white text-indigo-600 font-bold rounded-lg hover:bg-gray-100 transition-colors duration-200"
-		>
-			기도 제목 올리기
-		</a>
+	<section class="panel cta" in:fade={{ duration: 500, delay: 80 }}>
+		<h2>당신의 기도 제목도 올리고 동행을 시작하세요</h2>
+		<p>기도는 기도로 끝나지 않습니다. 함께 나누고, 기도하고, 답을 기억하는 여정이 됩니다.</p>
+		<div class="cta-actions">
+			<a href="/" class="btn btn-primary">기도 올리기</a>
+			<a href="/" class="btn btn-ghost">내 기도 기록 보기</a>
+		</div>
 	</section>
 </div>
 
 <style>
-	:global(.group) {
-		@apply transition-transform duration-200;
+	.wall-shell {
+		min-height: 100vh;
+		padding: 2rem 1rem 2.5rem;
+		background:
+			radial-gradient(1200px 700px at 0% 0%, color-mix(in oklab, var(--accent) 12%, transparent), transparent 72%),
+			radial-gradient(1100px 600px at 100% 14%, color-mix(in oklab, var(--accent-2) 10%, transparent), transparent 72%),
+			var(--bg);
+		color: var(--text);
+	}
+
+	.wall-shell--light {
+		--bg: #f6f4ef;
+		--surface: #ffffff;
+		--surface-soft: #f2ede5;
+		--text: #1f2937;
+		--muted: #6b7280;
+		--accent: #0f766e;
+		--accent-2: #d97706;
+		--line: #e5e7eb;
+		--shadow: 0 16px 40px -22px rgba(17, 24, 39, 0.35);
+	}
+
+	.wall-shell--dark {
+		--bg: #0f172a;
+		--surface: rgba(30, 41, 59, 0.7);
+		--surface-soft: rgba(51, 65, 85, 0.72);
+		--text: #f8fafc;
+		--muted: #94a3b8;
+		--accent: #2dd4bf;
+		--accent-2: #f59e0b;
+		--line: rgba(148, 163, 184, 0.25);
+		--shadow: 0 16px 40px -24px rgba(0, 0, 0, 0.6);
+	}
+
+	.hero {
+		max-width: 72rem;
+		margin: 0 auto;
+		padding: 2.25rem;
+		border-radius: 1.5rem;
+		background: color-mix(in oklab, var(--surface) 82%, transparent);
+		border: 1px solid var(--line);
+		box-shadow: var(--shadow);
+	}
+
+	.hero h1 {
+		margin: 0 0 0.55rem;
+		font-size: clamp(1.9rem, 4vw, 2.7rem);
+		line-height: 1.2;
+		font-weight: 800;
+	}
+
+	.hero-copy {
+		margin: 0;
+		max-width: 64ch;
+		color: var(--muted);
+		font-size: 1rem;
+		line-height: 1.6;
+	}
+
+	.hero-chip {
+		width: fit-content;
+		margin: 0 0 0.8rem;
+		padding: 0.3rem 0.8rem;
+		border-radius: 999px;
+		font-weight: 600;
+		font-size: 0.84rem;
+		color: var(--accent);
+		background: color-mix(in oklab, var(--accent) 16%, transparent);
+	}
+
+	.toolbar {
+		max-width: 72rem;
+		margin: 1rem auto 0;
+		display: grid;
+		grid-template-columns: repeat(3, 1fr);
+		gap: 0.75rem;
+	}
+
+	.toolbar-card {
+		border-radius: 1rem;
+		padding: 1rem;
+		border: 1px solid var(--line);
+		background: color-mix(in oklab, var(--surface) 86%, transparent);
+		box-shadow: var(--shadow);
+	}
+
+	.field-label {
+		display: block;
+		margin: 0 0 0.5rem;
+		font-weight: 600;
+		font-size: 0.88rem;
+	}
+
+	.search-wrap {
+		display: flex;
+		align-items: center;
+		gap: 0.55rem;
+		border: 1px solid var(--line);
+		padding: 0.55rem 0.75rem;
+		border-radius: 0.75rem;
+		background: var(--bg);
+	}
+
+	.search-wrap svg {
+		width: 1rem;
+		height: 1rem;
+		color: var(--muted);
+		flex-shrink: 0;
+	}
+
+	.search-wrap input {
+		width: 100%;
+		outline: none;
+		border: none;
+		color: var(--text);
+		background: transparent;
+	}
+
+	.chip-row {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.5rem;
+	}
+
+	.chip {
+		border-radius: 999px;
+		border: 1px solid var(--line);
+		padding: 0.4rem 0.72rem;
+		background: color-mix(in oklab, var(--surface) 84%, transparent);
+		font-size: 0.86rem;
+	}
+
+	.chip--active {
+		border-color: color-mix(in oklab, var(--accent) 35%, transparent);
+		background: color-mix(in oklab, var(--accent) 22%, transparent);
+		font-weight: 700;
+	}
+
+	.stats {
+		max-width: 72rem;
+		margin: 0.9rem auto 0;
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+		gap: 0.75rem;
+	}
+
+	.stat {
+		border-radius: 1rem;
+		border: 1px solid var(--line);
+		padding: 0.9rem;
+		box-shadow: var(--shadow);
+		background: color-mix(in oklab, var(--surface) 80%, transparent);
+	}
+
+	.stat p {
+		margin: 0;
+	}
+
+	.stat p:first-child {
+		color: var(--muted);
+		font-size: 0.84rem;
+	}
+
+	.stat p:last-child {
+		margin-top: 0.45rem;
+		font-size: 1.4rem;
+		font-weight: 800;
+	}
+
+	.stat--indigo,
+	.stat--blue,
+	.stat--green {
+		border-color: color-mix(in oklab, var(--accent) 20%, transparent);
+	}
+
+	.panel {
+		max-width: 72rem;
+		margin: 0.9rem auto 0;
+		border-radius: 1.2rem;
+		border: 1px solid var(--line);
+		background: color-mix(in oklab, var(--surface) 86%, transparent);
+		box-shadow: var(--shadow);
+	}
+
+	.results {
+		padding: 1rem;
+	}
+
+	.results-header {
+		display: flex;
+		justify-content: space-between;
+		align-items: baseline;
+		gap: 0.75rem;
+		padding: 0 0.25rem 0.85rem;
+		border-bottom: 1px solid var(--line);
+	}
+
+	.results-header h2 {
+		margin: 0;
+		font-size: 1.08rem;
+	}
+
+	.results-header p {
+		margin: 0;
+		color: var(--muted);
+		font-size: 0.9rem;
+	}
+
+	.prayer-grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+		gap: 0.75rem;
+		padding-top: 0.95rem;
+	}
+
+	.prayer-card {
+		border: 1px solid var(--line);
+		border-radius: 1rem;
+		padding: 1rem;
+		background: color-mix(in oklab, var(--surface-soft) 72%, transparent);
+		display: grid;
+		gap: 0.55rem;
+	}
+
+	.prayer-card-link {
+		color: inherit;
+		text-decoration: none;
+		display: grid;
+		gap: 0.55rem;
+	}
+
+	.prayer-top {
+		display: flex;
+		justify-content: space-between;
+		font-size: 0.75rem;
+		color: var(--muted);
+	}
+
+	.prayer-card h3 {
+		margin: 0;
+		font-size: 1rem;
+		line-height: 1.35;
+	}
+
+	.prayer-card p {
+		margin: 0;
+		font-size: 0.88rem;
+		color: color-mix(in oklab, var(--text) 82%, var(--muted));
+		line-height: 1.55;
+	}
+
+	.prayer-foot {
+		display: flex;
+		justify-content: space-between;
+		color: var(--muted);
+		font-size: 0.78rem;
+	}
+
+	.join-btn {
+		justify-self: start;
+		margin-top: 0.3rem;
+		border-radius: 0.7rem;
+		font-weight: 700;
+		border: 1px solid transparent;
+		padding: 0.48rem 0.84rem;
+		color: white;
+		background: linear-gradient(120deg, var(--accent), var(--accent-2));
+		cursor: pointer;
+	}
+
+	.empty-panel {
+		grid-column: 1 / -1;
+		border-radius: 1rem;
+		border: 1px dashed var(--line);
+		padding: 2rem 1rem;
+		color: var(--muted);
+		text-align: center;
+	}
+
+	.empty-icon {
+		font-size: 2rem;
+		margin-bottom: 0.5rem;
+	}
+
+	.empty-panel p {
+		margin: 0.25rem 0;
+	}
+
+	.cta {
+		padding: 1.2rem;
+	}
+
+	.cta h2 {
+		margin: 0 0 0.5rem;
+	}
+
+	.cta p {
+		margin: 0 0 1rem;
+		color: var(--muted);
+		max-width: 60ch;
+	}
+
+	.cta-actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.7rem;
+	}
+
+	.btn {
+		border-radius: 0.8rem;
+		padding: 0.64rem 1rem;
+		font-weight: 700;
+		border: 1px solid transparent;
+		text-decoration: none;
+	}
+
+	.btn:hover {
+		transform: translateY(-1px);
+	}
+
+	.btn-primary {
+		color: white;
+		background: linear-gradient(120deg, var(--accent), var(--accent-2));
+	}
+
+	.btn-ghost {
+		color: var(--text);
+		background: color-mix(in oklab, var(--surface) 92%, transparent);
+		border-color: var(--line);
+	}
+
+	@media (max-width: 980px) {
+		.toolbar {
+			grid-template-columns: 1fr;
+		}
+	}
+
+	@media (max-width: 640px) {
+		.wall-shell {
+			padding: 1rem 0.75rem 2rem;
+		}
+		.hero {
+			padding: 1.4rem;
+		}
 	}
 </style>

@@ -17,6 +17,13 @@
 		{ label: 'Wall', href: '/wall' },
 		{ label: 'My', href: '/my' }
 	];
+
+	function handleLogout() {
+		authStore.update((auth) => ({
+			...auth,
+			isLoggedIn: false
+		}));
+	}
 </script>
 
 <svelte:head><link rel="icon" href={favicon} /></svelte:head>
@@ -32,7 +39,7 @@
 					</a>
 				</div>
 				<div class="hidden md:flex space-x-8">
-					{#each navigation as item}
+					{#each navigation as item (item.href)}
 						<a 
 							href={item.href}
 							class="{isDarkMode ? 'text-gray-300 hover:text-indigo-400' : 'text-gray-700 hover:text-indigo-600'} font-medium transition-colors duration-200 relative group"
@@ -44,7 +51,7 @@
 				</div>
 				<div class="flex items-center space-x-4">
 					<div class="flex space-x-2">
-						{#each locales as locale}
+						{#each locales as locale (locale)}
 							<a 
 								href={localizeHref(page.url.pathname, { locale })}
 								class="{isDarkMode ? 'text-gray-300 hover:bg-gray-700' : 'text-gray-700 hover:bg-indigo-100'} px-2 py-1 text-xs font-semibold rounded transition-colors"
@@ -70,15 +77,12 @@
 							</span>
 							<div class="text-sm">
 								<p class="{isDarkMode ? 'text-gray-100' : 'text-gray-900'} font-semibold">{userName}</p>
-								<button onclick={() => (isLoggedIn = false)} class="{isDarkMode ? 'text-indigo-400 hover:text-indigo-300' : 'text-indigo-600 hover:text-indigo-700'} text-xs font-medium">
+								<button onclick={handleLogout} class="{isDarkMode ? 'text-indigo-400 hover:text-indigo-300' : 'text-indigo-600 hover:text-indigo-700'} text-xs font-medium">
 									로그아웃
 								</button>
 							</div>
 						</div>
 					{:else}
-						<!-- <a href="/login" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors duration-200 font-medium">
-							Sign In
-						</a> -->
 						<a href="/login" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors duration-200 font-medium">
 							Sign In
 						</a>

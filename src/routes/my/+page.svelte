@@ -1,5 +1,4 @@
 <script>
-	import { page } from '$app/state';
 	import { darkMode } from '$lib/stores';
 
 	let selectedTab = $state('my-prayers');
@@ -64,11 +63,13 @@
 		}
 	];
 
+	/** @param {number} id */
 	function handleEditPrayer(id) {
 		console.log('Edit prayer:', id);
 		// TODO: Implement edit functionality
 	}
 
+	/** @param {number} id */
 	function handleDeletePrayer(id) {
 		if (confirm('정말 삭제하시겠습니까?')) {
 			console.log('Delete prayer:', id);
@@ -76,11 +77,13 @@
 		}
 	}
 
+	/** @param {number} id */
 	function handleMarkAnswered(id) {
 		console.log('Mark as answered:', id);
 		// TODO: Implement mark as answered functionality
 	}
 
+	/** @param {number} id */
 	function handleLeavePrayer(id) {
 		console.log('Leave prayer:', id);
 		// TODO: Implement leave prayer functionality
